@@ -386,8 +386,6 @@ formLancamento.addEventListener("submit", async (e) => {
 });
 
 function renderizarLancamentos() {
-  document.getElementById("mes-atual-label-lanc").textContent = nomeMesCompetencia(mesSelecionado);
-
   const doMes = lancamentos.filter((l) => l.competencia === mesSelecionado);
 
   // Resumo por categoria (sempre com TODOS os lançamentos do mês, sem aplicar o filtro)
@@ -468,16 +466,6 @@ document.getElementById("mes-anterior").addEventListener("click", () => {
   renderizarLancamentos();
 });
 document.getElementById("mes-proximo").addEventListener("click", () => {
-  mesSelecionado = deslocarMes(mesSelecionado, 1);
-  renderizarResumo();
-  renderizarLancamentos();
-});
-document.getElementById("mes-anterior-lanc").addEventListener("click", () => {
-  mesSelecionado = deslocarMes(mesSelecionado, -1);
-  renderizarResumo();
-  renderizarLancamentos();
-});
-document.getElementById("mes-proximo-lanc").addEventListener("click", () => {
   mesSelecionado = deslocarMes(mesSelecionado, 1);
   renderizarResumo();
   renderizarLancamentos();
