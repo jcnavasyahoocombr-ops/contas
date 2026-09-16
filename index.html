@@ -64,7 +64,10 @@
       <header class="view-header">
         <div class="seletor-mes">
           <button id="mes-anterior" class="seta-mes" aria-label="Mês anterior">‹</button>
-          <h2 id="mes-atual-label">—</h2>
+          <div class="mes-clicavel">
+            <h2 id="mes-atual-label">—</h2>
+            <input type="month" id="mes-input-resumo" class="mes-input-oculto" aria-label="Escolher mês" />
+          </div>
           <button id="mes-proximo" class="seta-mes" aria-label="Próximo mês">›</button>
         </div>
       </header>
@@ -127,7 +130,10 @@
       <header class="view-header">
         <div class="seletor-mes">
           <button id="mes-anterior-planilha" class="seta-mes" aria-label="Mês anterior">‹</button>
-          <h2 id="mes-atual-label-planilha">—</h2>
+          <div class="mes-clicavel">
+            <h2 id="mes-atual-label-planilha">—</h2>
+            <input type="month" id="mes-input-planilha" class="mes-input-oculto" aria-label="Escolher mês" />
+          </div>
           <button id="mes-proximo-planilha" class="seta-mes" aria-label="Próximo mês">›</button>
         </div>
       </header>
