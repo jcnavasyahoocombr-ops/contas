@@ -398,6 +398,17 @@ input:focus, select:focus, button:focus-visible {
 .saldo-positivo { color: var(--sálvia); }
 .saldo-negativo { color: var(--tijolo); }
 
+.coluna-pessoa--extra {
+  opacity: 0.85;
+}
+.coluna-pessoa-extra-tag {
+  font-size: 11px;
+  color: var(--papel-fraco);
+  margin: -10px 0 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .linha-total-geral--planilha strong {
   font-family: var(--mono);
 }
@@ -481,6 +492,35 @@ input:focus, select:focus, button:focus-visible {
   padding: 14px 0;
   border-bottom: 1px solid var(--tinta-linha);
   gap: 16px;
+}
+
+.linha-fatura {
+  flex-direction: column;
+  align-items: stretch;
+}
+.linha-fatura-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.linha-fatura-limite {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--papel-fraco);
+  margin-top: 8px;
+}
+.barra-limite {
+  height: 4px;
+  background: var(--tinta-linha);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.barra-limite-preenchida {
+  height: 100%;
+  background: var(--dourado);
 }
 
 .linha-devedor-nome, .linha-fatura-nome {
