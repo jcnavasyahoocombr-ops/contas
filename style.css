@@ -1,0 +1,455 @@
+:root {
+  --tinta: #16212e;
+  --tinta-suave: #1e2c3c;
+  --tinta-linha: #2c3d51;
+  --papel: #ede6d6;
+  --papel-fraco: #b9b2a0;
+  --dourado: #c9a24b;
+  --tijolo: #c15b4a;
+  --sálvia: #6b9080;
+
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+/* O navegador já esconde [hidden] por padrão, mas qualquer regra nossa
+   que defina "display" no mesmo elemento (ex: .app { display: grid }))
+   sobrescreve esse padrão. Esta regra garante que hidden sempre vença. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--tinta);
+  color: var(--papel);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select {
+  font-family: inherit;
+  color: inherit;
+}
+
+h1, h2, h3 {
+  font-family: var(--serif);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* ---------- LOGIN ---------- */
+
+.tela-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-caixa {
+  width: 100%;
+  max-width: 420px;
+}
+
+.login-eyebrow {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--dourado);
+  letter-spacing: 0.02em;
+  margin: 0 0 12px;
+}
+
+.login-caixa h1 {
+  font-size: 34px;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.login-sub {
+  color: var(--papel-fraco);
+  line-height: 1.5;
+  margin-bottom: 32px;
+}
+
+.form-login, .form-lancamento {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--papel-fraco);
+}
+
+input[type="email"],
+input[type="password"],
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select {
+  background: var(--tinta-suave);
+  border: 1px solid var(--tinta-linha);
+  border-radius: 3px;
+  padding: 11px 12px;
+  font-size: 15px;
+  color: var(--papel);
+}
+
+input:focus, select:focus, button:focus-visible {
+  outline: 2px solid var(--dourado);
+  outline-offset: 1px;
+}
+
+.login-botoes {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.btn {
+  border: none;
+  border-radius: 3px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+
+.btn:active { transform: scale(0.98); }
+
+.btn-primario {
+  background: var(--dourado);
+  color: var(--tinta);
+  flex: 1;
+}
+.btn-primario:hover { background: #d8af5c; }
+
+.btn-fantasma {
+  background: transparent;
+  border: 1px solid var(--tinta-linha);
+  color: var(--papel);
+}
+.btn-fantasma:hover { border-color: var(--dourado); color: var(--dourado); }
+
+.login-erro {
+  color: var(--tijolo);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ---------- APP LAYOUT ---------- */
+
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.barra-lateral {
+  background: var(--tinta-suave);
+  border-right: 1px solid var(--tinta-linha);
+  padding: 28px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.marca {
+  font-family: var(--serif);
+  line-height: 1.15;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--tinta-linha);
+}
+.marca-linha1, .marca-linha2 {
+  display: block;
+  font-size: 22px;
+}
+.marca-linha2 { color: var(--dourado); }
+
+.nav-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-item {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 3px;
+  font-size: 15px;
+  color: var(--papel-fraco);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+}
+.nav-item:hover { color: var(--papel); }
+.nav-item.ativo {
+  color: var(--papel);
+  border-left: 2px solid var(--dourado);
+  background: rgba(201, 162, 75, 0.08);
+}
+
+.btn-sair {
+  background: none;
+  border: none;
+  color: var(--papel-fraco);
+  font-size: 13px;
+  text-align: left;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.btn-sair:hover { color: var(--tijolo); }
+
+.conteudo {
+  padding: 40px 48px;
+  max-width: 860px;
+}
+
+.view-header {
+  margin-bottom: 28px;
+}
+
+/* ---------- SELETOR DE MÊS ---------- */
+
+.seletor-mes {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.seletor-mes h2 { font-size: 26px; min-width: 220px; }
+
+.seta-mes {
+  background: var(--tinta-suave);
+  border: 1px solid var(--tinta-linha);
+  color: var(--papel);
+  width: 34px;
+  height: 34px;
+  border-radius: 3px;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+}
+.seta-mes:hover { border-color: var(--dourado); }
+
+/* ---------- CARDS DE TOTAL ---------- */
+
+.grade-resumo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--tinta-linha);
+  border: 1px solid var(--tinta-linha);
+  margin-bottom: 36px;
+}
+
+.cartao-total {
+  background: var(--tinta-suave);
+  padding: 20px;
+}
+
+.cartao-total-rotulo {
+  font-size: 13px;
+  color: var(--papel-fraco);
+  margin: 0 0 10px;
+}
+
+.cartao-total-valor {
+  font-family: var(--mono);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.cartao-total--credito .cartao-total-valor { color: var(--dourado); }
+.cartao-total--debito .cartao-total-valor { color: var(--sálvia); }
+
+/* ---------- SEÇÕES / LISTAS ---------- */
+
+.bloco-secao {
+  margin-bottom: 40px;
+}
+.bloco-secao h3 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.bloco-sub {
+  color: var(--papel-fraco);
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.vazio {
+  color: var(--papel-fraco);
+  font-size: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--tinta-linha);
+}
+
+.lista-devedores, .lista-faturas-cartao, .lista-lancamentos, .lista-cartoes {
+  display: flex;
+  flex-direction: column;
+}
+
+.linha-devedor, .linha-fatura, .linha-lancamento, .linha-cartao {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--tinta-linha);
+  gap: 16px;
+}
+
+.linha-devedor-nome, .linha-fatura-nome {
+  font-size: 15px;
+}
+
+.linha-devedor-valor, .linha-fatura-valor {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  color: var(--dourado);
+}
+
+.linha-total-geral {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 16px;
+  margin-top: 4px;
+  border-top: 1px solid var(--dourado);
+  font-size: 16px;
+}
+.linha-total-geral strong {
+  font-family: var(--mono);
+  color: var(--dourado);
+}
+
+.linha-lancamento {
+  flex-wrap: wrap;
+}
+.linha-lancamento-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.linha-lancamento-desc { font-size: 15px; }
+.linha-lancamento-meta {
+  font-size: 12px;
+  color: var(--papel-fraco);
+}
+.linha-lancamento-valor {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+.tag-debito { color: var(--sálvia); }
+.tag-credito { color: var(--dourado); }
+
+.btn-excluir {
+  background: none;
+  border: none;
+  color: var(--papel-fraco);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.btn-excluir:hover { color: var(--tijolo); }
+
+.linha-cartao {
+  align-items: flex-start;
+}
+.linha-cartao-nome { font-size: 16px; font-family: var(--serif); }
+.linha-cartao-datas { font-size: 13px; color: var(--papel-fraco); margin-top: 4px; }
+
+/* ---------- FORMULÁRIOS ---------- */
+
+.linha-dupla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.grupo-radio {
+  display: flex;
+  gap: 10px;
+  flex-direction: row;
+}
+
+.radio-pill {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  background: var(--tinta-suave);
+  border: 1px solid var(--tinta-linha);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--papel-fraco);
+  cursor: pointer;
+  width: fit-content;
+}
+.radio-pill input { accent-color: var(--dourado); }
+.radio-pill:has(input:checked) {
+  border-color: var(--dourado);
+  color: var(--papel);
+}
+
+.campos-credito {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  background: var(--tinta-suave);
+  border-left: 2px solid var(--dourado);
+}
+
+.preview-parcelas {
+  font-size: 13px;
+  color: var(--papel-fraco);
+  font-family: var(--mono);
+  margin: 0;
+}
+
+.form-lancamento {
+  margin-bottom: 40px;
+  max-width: 520px;
+}
+
+/* ---------- RESPONSIVO ---------- */
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .barra-lateral {
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 16px;
+    border-right: none;
+    border-bottom: 1px solid var(--tinta-linha);
+  }
+  .marca { margin-bottom: 0; padding-bottom: 0; border-bottom: none; margin-right: auto; }
+  .marca-linha1, .marca-linha2 { display: inline; font-size: 16px; }
+  .marca-linha2 { margin-left: 4px; }
+  .nav-principal { flex-direction: row; flex: none; }
+  .btn-sair { display: none; }
+  .conteudo { padding: 24px 18px; }
+  .grade-resumo { grid-template-columns: 1fr; }
+  .linha-dupla { grid-template-columns: 1fr; }
+  .seletor-mes h2 { min-width: 0; font-size: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Livro de Contas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="tela-login" class="tela-login">
+  <div class="login-caixa">
+    <p class="login-eyebrow">livro de contas</p>
+    <h1>Suas contas, do seu jeito.</h1>
+    <p class="login-sub">Entre com seu e-mail e senha para acessar seus lançamentos, de qualquer aparelho.</p>
+
+    <form id="form-login" class="form-login">
+      <label>
+        E-mail
+        <input type="email" id="login-email" required autocomplete="email" />
+      </label>
+      <label>
+        Senha
+        <input type="password" id="login-senha" required autocomplete="current-password" minlength="6" />
+      </label>
+      <p id="login-erro" class="login-erro" hidden></p>
+      <div class="login-botoes">
+        <button type="submit" class="btn btn-primario">Entrar</button>
+        <button type="button" id="btn-cadastrar" class="btn btn-fantasma">Criar conta</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app" hidden>
+  <aside class="barra-lateral">
+    <div class="marca">
+      <span class="marca-linha1">Livro de</span>
+      <span class="marca-linha2">Contas</span>
+    </div>
+    <nav class="nav-principal">
+      <button class="nav-item ativo" data-view="resumo">Resumo</button>
+      <button class="nav-item" data-view="lancamentos">Lançamentos</button>
+      <button class="nav-item" data-view="cartoes">Cartões</button>
+    </nav>
+    <button id="btn-sair" class="btn-sair">Sair da conta</button>
+  </aside>
+
+  <main class="conteudo">
+
+    <!-- VIEW: RESUMO -->
+    <section id="view-resumo" class="view">
+      <header class="view-header">
+        <div class="seletor-mes">
+          <button id="mes-anterior" class="seta-mes" aria-label="Mês anterior">‹</button>
+          <h2 id="mes-atual-label">—</h2>
+          <button id="mes-proximo" class="seta-mes" aria-label="Próximo mês">›</button>
+        </div>
+      </header>
+
+      <div class="grade-resumo">
+        <div class="cartao-total cartao-total--geral">
+          <p class="cartao-total-rotulo">Total do mês</p>
+          <p class="cartao-total-valor" id="total-mes-valor">R$ 0,00</p>
+        </div>
+        <div class="cartao-total cartao-total--debito">
+          <p class="cartao-total-rotulo">Débito (à vista)</p>
+          <p class="cartao-total-valor" id="total-debito-valor">R$ 0,00</p>
+        </div>
+        <div class="cartao-total cartao-total--credito">
+          <p class="cartao-total-rotulo">Crédito (faturas do mês)</p>
+          <p class="cartao-total-valor" id="total-credito-valor">R$ 0,00</p>
+        </div>
+      </div>
+
+      <div class="bloco-secao">
+        <h3>Quem deve o quê</h3>
+        <p class="bloco-sub">Somando todos os lançamentos, de todos os meses.</p>
+        <div id="lista-devedores" class="lista-devedores">
+          <p class="vazio">Nenhum lançamento ainda.</p>
+        </div>
+        <div class="linha-total-geral">
+          <span>Total geral acumulado</span>
+          <strong id="total-geral-valor">R$ 0,00</strong>
+        </div>
+      </div>
+
+      <div class="bloco-secao">
+        <h3>Faturas por cartão — <span id="mes-atual-label-2">—</span></h3>
+        <div id="lista-faturas-cartao" class="lista-faturas-cartao">
+          <p class="vazio">Nenhum cartão cadastrado ainda.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: LANÇAMENTOS -->
+    <section id="view-lancamentos" class="view" hidden>
+      <header class="view-header">
+        <h2>Novo lançamento</h2>
+      </header>
+
+      <form id="form-lancamento" class="form-lancamento">
+        <label>
+          O que foi
+          <input type="text" id="lanc-descricao" placeholder="Ex: Mercado, Cinema, Gasolina" required />
+        </label>
+
+        <div class="linha-dupla">
+          <label>
+            Valor total (R$)
+            <input type="number" id="lanc-valor" step="0.01" min="0.01" inputmode="decimal" required />
+          </label>
+          <label>
+            Data da compra
+            <input type="date" id="lanc-data" required />
+          </label>
+        </div>
+
+        <label>
+          De quem é essa conta
+          <div class="grupo-radio" id="grupo-owner"><!-- preenchido via JS com os nomes de firebase-config.js --></div>
+          <input type="text" id="lanc-owner-nome" placeholder="Nome da pessoa" hidden />
+        </label>
+
+        <label>
+          Forma de pagamento
+          <div class="grupo-radio" id="grupo-pagamento">
+            <label class="radio-pill"><input type="radio" name="pagamento" value="debito" checked /> Débito</label>
+            <label class="radio-pill"><input type="radio" name="pagamento" value="credito" /> Crédito</label>
+          </div>
+        </label>
+
+        <div id="campos-credito" class="campos-credito" hidden>
+          <label>
+            Cartão
+            <select id="lanc-cartao"></select>
+          </label>
+          <label>
+            Parcelas
+            <input type="number" id="lanc-parcelas" min="1" max="48" value="1" />
+          </label>
+          <p id="preview-parcelas" class="preview-parcelas"></p>
+        </div>
+
+        <p id="lanc-erro" class="login-erro" hidden></p>
+        <button type="submit" class="btn btn-primario">Salvar lançamento</button>
+      </form>
+
+      <div class="bloco-secao">
+        <h3>Últimos lançamentos</h3>
+        <div id="lista-lancamentos" class="lista-lancamentos">
+          <p class="vazio">Nenhum lançamento ainda.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: CARTÕES -->
+    <section id="view-cartoes" class="view" hidden>
+      <header class="view-header">
+        <h2>Seus cartões</h2>
+      </header>
+
+      <form id="form-cartao" class="form-lancamento">
+        <label>
+          Nome do cartão
+          <input type="text" id="cartao-nome" placeholder="Ex: Nubank, Inter, Itaú" required />
+        </label>
+        <div class="linha-dupla">
+          <label>
+            Dia de virada (fechamento)
+            <input type="number" id="cartao-virada" min="1" max="31" required />
+          </label>
+          <label>
+            Dia de vencimento
+            <input type="number" id="cartao-vencimento" min="1" max="31" required />
+          </label>
+        </div>
+        <p id="cartao-erro" class="login-erro" hidden></p>
+        <button type="submit" class="btn btn-primario">Adicionar cartão</button>
+      </form>
+
+      <div class="bloco-secao">
+        <div id="lista-cartoes" class="lista-cartoes">
+          <p class="vazio">Nenhum cartão cadastrado ainda.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
