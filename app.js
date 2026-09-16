@@ -516,8 +516,25 @@ document.getElementById("mes-proximo").addEventListener("click", () => irParaMes
 document.getElementById("mes-anterior-planilha").addEventListener("click", () => irParaMes(-1));
 document.getElementById("mes-proximo-planilha").addEventListener("click", () => irParaMes(1));
 
+const inputMesResumo = document.getElementById("mes-input-resumo");
+const inputMesPlanilha = document.getElementById("mes-input-planilha");
+inputMesResumo.value = mesSelecionado;
+inputMesPlanilha.value = mesSelecionado;
+inputMesResumo.addEventListener("change", (e) => {
+  if (e.target.value) definirMes(e.target.value);
+});
+inputMesPlanilha.addEventListener("change", (e) => {
+  if (e.target.value) definirMes(e.target.value);
+});
+
 function irParaMes(delta) {
-  mesSelecionado = deslocarMes(mesSelecionado, delta);
+  definirMes(deslocarMes(mesSelecionado, delta));
+}
+
+function definirMes(novoMes) {
+  mesSelecionado = novoMes;
+  inputMesResumo.value = mesSelecionado;
+  inputMesPlanilha.value = mesSelecionado;
   renderizarResumo();
   renderizarLancamentos();
   renderizarPlanilha();
