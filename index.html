@@ -45,6 +45,7 @@
     </div>
     <nav class="nav-principal">
       <button class="nav-item ativo" data-view="resumo">Resumo</button>
+      <button class="nav-item" data-view="planilha">Planilha</button>
       <button class="nav-item" data-view="lancamentos">Lançamentos</button>
       <button class="nav-item" data-view="cartoes">Cartões</button>
     </nav>
@@ -113,6 +114,29 @@
         <div id="lista-lancamentos" class="lista-lancamentos">
           <p class="vazio">Nenhum lançamento ainda.</p>
         </div>
+      </div>
+    </section>
+
+    <!-- VIEW: PLANILHA -->
+    <section id="view-planilha" class="view" hidden>
+      <header class="view-header">
+        <div class="seletor-mes">
+          <button id="mes-anterior-planilha" class="seta-mes" aria-label="Mês anterior">‹</button>
+          <h2 id="mes-atual-label-planilha">—</h2>
+          <button id="mes-proximo-planilha" class="seta-mes" aria-label="Próximo mês">›</button>
+        </div>
+      </header>
+
+      <p class="bloco-sub">
+        Informe o salário de cada um no mês e veja, lado a lado, o que cada
+        pessoa gastou e quanto sobra (ou falta).
+      </p>
+
+      <div id="colunas-planilha" class="colunas-planilha"></div>
+
+      <div class="linha-total-geral linha-total-geral--planilha">
+        <span>Saldo do casal no mês</span>
+        <strong id="saldo-geral-planilha">R$ 0,00</strong>
       </div>
     </section>
 
