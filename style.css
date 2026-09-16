@@ -278,6 +278,97 @@ input:focus, select:focus, button:focus-visible {
   font-size: 13px;
 }
 
+/* ---------- PLANILHA (colunas por pessoa) ---------- */
+
+.colunas-planilha {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1px;
+  background: var(--tinta-linha);
+  border: 1px solid var(--tinta-linha);
+  margin-bottom: 24px;
+}
+
+.coluna-pessoa {
+  background: var(--tinta);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.coluna-pessoa-nome {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.coluna-pessoa label {
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+
+.input-salario {
+  background: var(--tinta-suave);
+  border: 1px solid var(--tinta-linha);
+  border-radius: 3px;
+  padding: 9px 10px;
+  font-family: var(--mono);
+  font-size: 15px;
+  color: var(--sálvia);
+  width: 100%;
+}
+
+.coluna-pessoa-linha {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--tinta-linha);
+  font-size: 13px;
+}
+.coluna-pessoa-linha-desc {
+  color: var(--papel-fraco);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.coluna-pessoa-linha-valor {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.coluna-pessoa-subtotal {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: auto;
+  font-size: 13px;
+  color: var(--papel-fraco);
+}
+.coluna-pessoa-subtotal span:last-child {
+  font-family: var(--mono);
+  color: var(--tijolo);
+}
+
+.coluna-pessoa-saldo {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--dourado);
+  font-size: 15px;
+}
+.coluna-pessoa-saldo strong {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.saldo-positivo { color: var(--sálvia); }
+.saldo-negativo { color: var(--tijolo); }
+
+.linha-total-geral--planilha strong {
+  font-family: var(--mono);
+}
+
 .seta-mes {
   background: var(--tinta-suave);
   border: 1px solid var(--tinta-linha);
