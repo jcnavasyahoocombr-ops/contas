@@ -16,6 +16,7 @@ import {
   query,
   orderBy,
   writeBatch,
+  setDoc,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 import { firebaseConfig, householdId, pessoas, categorias } from "./firebase-config.js";
@@ -33,6 +34,7 @@ const db = getFirestore(app);
 let uid = null;
 let cartoes = [];      // [{id, nome, virada, vencimento}]
 let lancamentos = [];  // [{id, descricao, valor, dataCompra, owner, pagamento, cartaoId, competencia, parcelaAtual, parcelasTotal, groupId}]
+let salariosPorMes = {}; // { "2026-09": { "Eu": 5000, "Parceiro(a)": 4500 }, ... }
 let mesSelecionado = formatoAnoMes(new Date());
 let categoriaFiltro = "todas";
 
@@ -94,6 +96,7 @@ document.getElementById("btn-sair").addEventListener("click", () => signOut(auth
 
 let unsubCartoes = null;
 let unsubLancamentos = null;
+let unsubSalarios = null;
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
@@ -107,8 +110,10 @@ onAuthStateChanged(auth, (user) => {
     telaLogin.hidden = false;
     if (unsubCartoes) unsubCartoes();
     if (unsubLancamentos) unsubLancamentos();
+    if (unsubSalarios) unsubSalarios();
     cartoes = [];
     lancamentos = [];
+    salariosPorMes = {};
   }
 });
 
@@ -127,6 +132,16 @@ function iniciarListeners() {
     lancamentos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderizarLancamentos();
     renderizarResumo();
+    renderizarPlanilha();
+  });
+
+  const refSalarios = collection(db, "households", householdId, "salarios");
+  unsubSalarios = onSnapshot(refSalarios, (snap) => {
+    salariosPorMes = {};
+    snap.docs.forEach((d) => {
+      salariosPorMes[d.id] = d.data().valores || {};
+    });
+    renderizarPlanilha();
   });
 }
 
@@ -134,6 +149,7 @@ function iniciarListeners() {
 const navItens = document.querySelectorAll(".nav-item");
 const views = {
   resumo: document.getElementById("view-resumo"),
+  planilha: document.getElementById("view-planilha"),
   lancamentos: document.getElementById("view-lancamentos"),
   cartoes: document.getElementById("view-cartoes"),
 };
@@ -298,21 +314,22 @@ function atualizarPreviewParcelas() {
 // O usuário só digita números (ex: "2000000") e o campo formata
 // sozinho como "R$ 20.000,00" — sem depender de digitar ponto/vírgula
 // no lugar certo, o que é bem mais confiável (principalmente no celular).
-const inputValor = document.getElementById("lanc-valor");
-
-inputValor.addEventListener("input", () => {
-  let digitos = inputValor.value.replace(/\D/g, "");
+function formatarMascaraDinheiro(valorAtual) {
+  let digitos = valorAtual.replace(/\D/g, "");
   digitos = digitos.replace(/^0+(?=\d)/, ""); // tira zeros à esquerda
-  if (digitos === "") {
-    inputValor.value = "";
-    return;
-  }
+  if (digitos === "") return "";
   while (digitos.length < 3) digitos = "0" + digitos; // garante ao menos "0,00"
   const reaisStr = digitos.slice(0, -2);
   const centavosStr = digitos.slice(-2);
   const reaisFormatado = reaisStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  inputValor.value = `${reaisFormatado},${centavosStr}`;
-});
+  return `${reaisFormatado},${centavosStr}`;
+}
+
+function aplicarMascaraDinheiro(inputEl) {
+  inputEl.addEventListener("input", () => {
+    inputEl.value = formatarMascaraDinheiro(inputEl.value);
+  });
+}
 
 /**
  * Lê o valor numérico (em reais) de um campo com a máscara acima.
@@ -323,6 +340,9 @@ function lerValorMascarado(inputEl) {
   if (digitos === "") return NaN;
   return parseInt(digitos, 10) / 100;
 }
+
+const inputValor = document.getElementById("lanc-valor");
+aplicarMascaraDinheiro(inputValor);
 
 const formLancamento = document.getElementById("form-lancamento");
 const lancErro = document.getElementById("lanc-erro");
@@ -489,16 +509,17 @@ function renderizarLancamentos() {
 }
 
 // ---------- RESUMO ----------
-document.getElementById("mes-anterior").addEventListener("click", () => {
-  mesSelecionado = deslocarMes(mesSelecionado, -1);
+document.getElementById("mes-anterior").addEventListener("click", () => irParaMes(-1));
+document.getElementById("mes-proximo").addEventListener("click", () => irParaMes(1));
+document.getElementById("mes-anterior-planilha").addEventListener("click", () => irParaMes(-1));
+document.getElementById("mes-proximo-planilha").addEventListener("click", () => irParaMes(1));
+
+function irParaMes(delta) {
+  mesSelecionado = deslocarMes(mesSelecionado, delta);
   renderizarResumo();
   renderizarLancamentos();
-});
-document.getElementById("mes-proximo").addEventListener("click", () => {
-  mesSelecionado = deslocarMes(mesSelecionado, 1);
-  renderizarResumo();
-  renderizarLancamentos();
-});
+  renderizarPlanilha();
+}
 
 function deslocarMes(competencia, n) {
   const [ano, mes] = competencia.split("-").map(Number);
@@ -569,6 +590,80 @@ function renderizarResumo() {
 
   const totalGeral = Object.values(porOwner).reduce((s, v) => s + v, 0);
   document.getElementById("total-geral-valor").textContent = formatarMoeda(totalGeral);
+}
+
+// ---------- PLANILHA (colunas por pessoa: gasto x salário) ----------
+function renderizarPlanilha() {
+  document.getElementById("mes-atual-label-planilha").textContent = nomeMesCompetencia(mesSelecionado);
+
+  const valoresSalario = salariosPorMes[mesSelecionado] || {};
+  const doMes = lancamentos.filter((l) => l.competencia === mesSelecionado);
+
+  const container = document.getElementById("colunas-planilha");
+  container.innerHTML = "";
+  let saldoGeral = 0;
+
+  pessoas.forEach((pessoa) => {
+    const gastosPessoa = doMes.filter((l) => l.owner === pessoa);
+    const totalGasto = gastosPessoa.reduce((s, l) => s + l.valor, 0);
+    const salario = valoresSalario[pessoa] || 0;
+    const saldo = salario - totalGasto;
+    saldoGeral += saldo;
+
+    const valorInicial =
+      salario > 0 ? formatarMascaraDinheiro(String(Math.round(salario * 100))) : "";
+
+    const linhasHtml =
+      gastosPessoa.length === 0
+        ? '<p class="vazio">Nenhum gasto neste mês.</p>'
+        : gastosPessoa
+            .map(
+              (l) => `
+          <div class="coluna-pessoa-linha">
+            <span class="coluna-pessoa-linha-desc">${escapeHtml(l.descricao)}</span>
+            <span class="coluna-pessoa-linha-valor">${formatarMoeda(l.valor)}</span>
+          </div>`
+            )
+            .join("");
+
+    const coluna = document.createElement("div");
+    coluna.className = "coluna-pessoa";
+    coluna.innerHTML = `
+      <h3 class="coluna-pessoa-nome">${escapeHtml(pessoa)}</h3>
+      <label>
+        Salário do mês
+        <input type="text" class="input-salario" inputmode="numeric" placeholder="R$ 0,00" value="${valorInicial}" />
+      </label>
+      <div class="coluna-pessoa-lista">${linhasHtml}</div>
+      <div class="coluna-pessoa-subtotal">
+        <span>Total gasto</span>
+        <span>${formatarMoeda(totalGasto)}</span>
+      </div>
+      <div class="coluna-pessoa-saldo">
+        <span>Saldo</span>
+        <strong class="${saldo >= 0 ? "saldo-positivo" : "saldo-negativo"}">${formatarMoeda(saldo)}</strong>
+      </div>
+    `;
+
+    const inputSalario = coluna.querySelector(".input-salario");
+    aplicarMascaraDinheiro(inputSalario);
+    inputSalario.addEventListener("change", async () => {
+      const novoValor = lerValorMascarado(inputSalario);
+      const valorFinal = isNaN(novoValor) ? 0 : novoValor;
+      const atualizados = { ...(salariosPorMes[mesSelecionado] || {}), [pessoa]: valorFinal };
+      await setDoc(
+        doc(db, "households", householdId, "salarios", mesSelecionado),
+        { valores: atualizados },
+        { merge: true }
+      );
+    });
+
+    container.appendChild(coluna);
+  });
+
+  const saldoGeralEl = document.getElementById("saldo-geral-planilha");
+  saldoGeralEl.textContent = formatarMoeda(saldoGeral);
+  saldoGeralEl.className = saldoGeral >= 0 ? "saldo-positivo" : "saldo-negativo";
 }
 
 function escapeHtml(str) {
