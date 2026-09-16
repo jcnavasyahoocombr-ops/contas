@@ -23,7 +23,6 @@ import {
   competenciaDaCompra,
   gerarCompetenciasParceladas,
   nomeMesCompetencia,
-  parseValorBR,
 } from "./fatura.js";
 
 const app = initializeApp(firebaseConfig);
@@ -295,6 +294,36 @@ function atualizarPreviewParcelas() {
   }
 }
 
+// ---------- CAMPO DE VALOR COM MÁSCARA DE DINHEIRO ----------
+// O usuário só digita números (ex: "2000000") e o campo formata
+// sozinho como "R$ 20.000,00" — sem depender de digitar ponto/vírgula
+// no lugar certo, o que é bem mais confiável (principalmente no celular).
+const inputValor = document.getElementById("lanc-valor");
+
+inputValor.addEventListener("input", () => {
+  let digitos = inputValor.value.replace(/\D/g, "");
+  digitos = digitos.replace(/^0+(?=\d)/, ""); // tira zeros à esquerda
+  if (digitos === "") {
+    inputValor.value = "";
+    return;
+  }
+  while (digitos.length < 3) digitos = "0" + digitos; // garante ao menos "0,00"
+  const reaisStr = digitos.slice(0, -2);
+  const centavosStr = digitos.slice(-2);
+  const reaisFormatado = reaisStr.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  inputValor.value = `${reaisFormatado},${centavosStr}`;
+});
+
+/**
+ * Lê o valor numérico (em reais) de um campo com a máscara acima.
+ * Retorna NaN se estiver vazio.
+ */
+function lerValorMascarado(inputEl) {
+  const digitos = inputEl.value.replace(/\D/g, "");
+  if (digitos === "") return NaN;
+  return parseInt(digitos, 10) / 100;
+}
+
 const formLancamento = document.getElementById("form-lancamento");
 const lancErro = document.getElementById("lanc-erro");
 
@@ -303,7 +332,7 @@ formLancamento.addEventListener("submit", async (e) => {
   lancErro.hidden = true;
 
   const descricao = document.getElementById("lanc-descricao").value.trim();
-  const valorTotal = parseValorBR(document.getElementById("lanc-valor").value);
+  const valorTotal = lerValorMascarado(document.getElementById("lanc-valor"));
   const dataCompra = document.getElementById("lanc-data").value;
   const tipoOwner = grupoOwner.querySelector("input:checked").value;
   const owner = tipoOwner === "outro" ? inputOwnerNome.value.trim() : tipoOwner;
@@ -313,7 +342,7 @@ formLancamento.addEventListener("submit", async (e) => {
 
   if (!descricao || !dataCompra) return;
   if (!valorTotal || isNaN(valorTotal) || valorTotal <= 0) {
-    lancErro.textContent = "Digite um valor válido, ex: 20mil ou 150,50.";
+    lancErro.textContent = "Digite um valor válido.";
     lancErro.hidden = false;
     return;
   }
