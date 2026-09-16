@@ -229,6 +229,55 @@ input:focus, select:focus, button:focus-visible {
 }
 .seletor-mes h2 { font-size: 26px; min-width: 220px; }
 
+.lancamentos-lista-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.lancamentos-lista-header h3 { margin: 0; }
+
+.seletor-mes--compacto {
+  gap: 10px;
+}
+.seletor-mes--compacto span {
+  font-family: var(--serif);
+  font-size: 16px;
+  min-width: 150px;
+  text-align: center;
+}
+
+.resumo-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+.tag-categoria {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--tinta-suave);
+  border: 1px solid var(--tinta-linha);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 13px;
+}
+.tag-categoria-nome { color: var(--papel-fraco); }
+.tag-categoria-valor {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--dourado);
+}
+
+.filtro-linha {
+  margin-bottom: 8px;
+  max-width: 260px;
+}
+.filtro-linha label {
+  font-size: 13px;
+}
+
 .seta-mes {
   background: var(--tinta-suave);
   border: 1px solid var(--tinta-linha);

@@ -16,3 +16,15 @@ export const householdId = "nosso-espaco";
 // Nomes usados no formulário de lançamento para marcar de quem é a conta.
 // Edite com os nomes de vocês dois. Pode adicionar mais nomes se precisar.
 export const pessoas = ["Eu", "Parceiro(a)"];
+
+// Categorias usadas para classificar os gastos. Edite como quiser.
+export const categorias = [
+  "Alimentação",
+  "Assinaturas",
+  "Transporte",
+  "Compras",
+  "Lazer",
+  "Saúde",
+  "Casa",
+  "Outros",
+];

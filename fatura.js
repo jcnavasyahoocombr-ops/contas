@@ -50,6 +50,44 @@ function mesDeVencimento(cicloFechamento, diaVirada, diaVencimento) {
 }
 
 /**
+ * Converte um texto de valor no formato brasileiro para número. Aceita:
+ * - "20.000,00", "1.234,56" (ponto = milhar, vírgula = decimal)
+ * - "50,00", "50" (só vírgula, ou só dígitos)
+ * - "20mil", "200mil", "1,5mil", "20 mil" (atalho: "mil" multiplica por 1000)
+ */
+export function parseValorBR(texto) {
+  if (typeof texto !== "string") return NaN;
+  let s = texto.trim().replace(/\s/g, "").toLowerCase();
+  if (s === "") return NaN;
+
+  // Atalho "mil": "20mil" -> 20 * 1000, "mil" sozinho -> 1000
+  const matchMil = s.match(/^(.*?)mil$/);
+  if (matchMil) {
+    const prefixo = matchMil[1];
+    if (prefixo === "") return 1000;
+    const base = parseNumeroBR(prefixo);
+    return isNaN(base) ? NaN : base * 1000;
+  }
+
+  return parseNumeroBR(s);
+}
+
+function parseNumeroBR(s) {
+  const temPonto = s.includes(".");
+  const temVirgula = s.includes(",");
+
+  if (temPonto && temVirgula) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (temVirgula) {
+    s = s.replace(",", ".");
+  } else if (temPonto && /^\d{1,3}(\.\d{3})+$/.test(s)) {
+    s = s.replace(/\./g, "");
+  }
+  return parseFloat(s);
+}
+
+
+/**
  * Formata {ano, mes} (mes 0-indexado) como "YYYY-MM".
  */
 export function formatCompetencia(anoMes) {

@@ -18,11 +18,12 @@ import {
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-import { firebaseConfig, householdId, pessoas } from "./firebase-config.js";
+import { firebaseConfig, householdId, pessoas, categorias } from "./firebase-config.js";
 import {
   competenciaDaCompra,
   gerarCompetenciasParceladas,
   nomeMesCompetencia,
+  parseValorBR,
 } from "./fatura.js";
 
 const app = initializeApp(firebaseConfig);
@@ -34,6 +35,7 @@ let uid = null;
 let cartoes = [];      // [{id, nome, virada, vencimento}]
 let lancamentos = [];  // [{id, descricao, valor, dataCompra, owner, pagamento, cartaoId, competencia, parcelaAtual, parcelasTotal, groupId}]
 let mesSelecionado = formatoAnoMes(new Date());
+let categoriaFiltro = "todas";
 
 function formatoAnoMes(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -118,6 +120,7 @@ function iniciarListeners() {
     renderizarCartoes();
     preencherSelectCartoes();
     renderizarResumo();
+    renderizarLancamentos();
   });
 
   const refLanc = query(collection(db, "households", householdId, "expenses"), orderBy("dataCompra", "desc"));
@@ -238,6 +241,31 @@ grupoOwner.addEventListener("change", () => {
   inputOwnerNome.required = tipo === "outro";
 });
 
+const grupoCategoria = document.getElementById("grupo-categoria");
+const inputCategoriaNome = document.getElementById("lanc-categoria-nome");
+
+grupoCategoria.innerHTML =
+  categorias
+    .map(
+      (nome, i) =>
+        `<label class="radio-pill"><input type="radio" name="categoria" value="${escapeHtml(nome)}" ${i === 0 ? "checked" : ""} /> ${escapeHtml(nome)}</label>`
+    )
+    .join("") +
+  `<label class="radio-pill"><input type="radio" name="categoria" value="outra" /> Outra</label>`;
+
+grupoCategoria.addEventListener("change", () => {
+  const tipo = grupoCategoria.querySelector("input:checked").value;
+  inputCategoriaNome.hidden = tipo !== "outra";
+  inputCategoriaNome.required = tipo === "outra";
+});
+
+// Filtro de categoria na lista de lançamentos do mês
+const filtroCategoria = document.getElementById("filtro-categoria");
+filtroCategoria.addEventListener("change", () => {
+  categoriaFiltro = filtroCategoria.value;
+  renderizarLancamentos();
+});
+
 ["lanc-data", "lanc-cartao", "lanc-parcelas"].forEach((id) => {
   document.getElementById(id).addEventListener("input", atualizarPreviewParcelas);
   document.getElementById(id).addEventListener("change", atualizarPreviewParcelas);
@@ -275,13 +303,25 @@ formLancamento.addEventListener("submit", async (e) => {
   lancErro.hidden = true;
 
   const descricao = document.getElementById("lanc-descricao").value.trim();
-  const valorTotal = parseFloat(document.getElementById("lanc-valor").value);
+  const valorTotal = parseValorBR(document.getElementById("lanc-valor").value);
   const dataCompra = document.getElementById("lanc-data").value;
   const tipoOwner = grupoOwner.querySelector("input:checked").value;
   const owner = tipoOwner === "outro" ? inputOwnerNome.value.trim() : tipoOwner;
+  const tipoCategoria = grupoCategoria.querySelector("input:checked").value;
+  const categoria = tipoCategoria === "outra" ? inputCategoriaNome.value.trim() : tipoCategoria;
   const pagamento = grupoPagamento.querySelector("input:checked").value;
 
-  if (!descricao || !valorTotal || !dataCompra) return;
+  if (!descricao || !dataCompra) return;
+  if (!valorTotal || isNaN(valorTotal) || valorTotal <= 0) {
+    lancErro.textContent = "Digite um valor válido, ex: 20mil ou 150,50.";
+    lancErro.hidden = false;
+    return;
+  }
+  if (tipoCategoria === "outra" && !categoria) {
+    lancErro.textContent = "Informe o nome da categoria.";
+    lancErro.hidden = false;
+    return;
+  }
   if (tipoOwner === "outro" && !owner) {
     lancErro.textContent = "Informe o nome da pessoa.";
     lancErro.hidden = false;
@@ -294,6 +334,7 @@ formLancamento.addEventListener("submit", async (e) => {
       valor: valorTotal,
       dataCompra,
       owner,
+      categoria,
       pagamento: "debito",
       cartaoId: null,
       competencia: dataCompra.slice(0, 7),
@@ -324,6 +365,7 @@ formLancamento.addEventListener("submit", async (e) => {
         valor: valorParcela,
         dataCompra,
         owner,
+        categoria,
         pagamento: "credito",
         cartaoId,
         competencia,
@@ -339,20 +381,57 @@ formLancamento.addEventListener("submit", async (e) => {
   formLancamento.reset();
   camposCredito.hidden = true;
   inputOwnerNome.hidden = true;
+  inputCategoriaNome.hidden = true;
   document.getElementById("preview-parcelas").textContent = "";
 });
 
 function renderizarLancamentos() {
+  document.getElementById("mes-atual-label-lanc").textContent = nomeMesCompetencia(mesSelecionado);
+
+  const doMes = lancamentos.filter((l) => l.competencia === mesSelecionado);
+
+  // Resumo por categoria (sempre com TODOS os lançamentos do mês, sem aplicar o filtro)
+  const porCategoria = {};
+  doMes.forEach((l) => {
+    const cat = l.categoria || "Outros";
+    porCategoria[cat] = (porCategoria[cat] || 0) + l.valor;
+  });
+  const resumoCategorias = document.getElementById("resumo-categorias");
+  const categoriasDoMes = Object.keys(porCategoria).sort((a, b) => porCategoria[b] - porCategoria[a]);
+  resumoCategorias.innerHTML = categoriasDoMes
+    .map(
+      (cat) => `
+        <div class="tag-categoria">
+          <span class="tag-categoria-nome">${escapeHtml(cat)}</span>
+          <span class="tag-categoria-valor">${formatarMoeda(porCategoria[cat])}</span>
+        </div>`
+    )
+    .join("");
+
+  // Popula o filtro com as categorias que existem neste mês, preservando a seleção atual se possível
+  const filtroCategoria = document.getElementById("filtro-categoria");
+  const selecaoAtual = categoriaFiltro;
+  filtroCategoria.innerHTML =
+    `<option value="todas">Todas</option>` +
+    categoriasDoMes.map((cat) => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join("");
+  filtroCategoria.value = categoriasDoMes.includes(selecaoAtual) ? selecaoAtual : "todas";
+  categoriaFiltro = filtroCategoria.value;
+
+  // Lista filtrada
   const lista = document.getElementById("lista-lancamentos");
-  if (lancamentos.length === 0) {
-    lista.innerHTML = '<p class="vazio">Nenhum lançamento ainda.</p>';
+  const filtrados =
+    categoriaFiltro === "todas" ? doMes : doMes.filter((l) => (l.categoria || "Outros") === categoriaFiltro);
+
+  if (filtrados.length === 0) {
+    lista.innerHTML = '<p class="vazio">Nenhum lançamento neste mês.</p>';
     return;
   }
   lista.innerHTML = "";
-  lancamentos.slice(0, 40).forEach((l) => {
+  filtrados.forEach((l) => {
     const cartao = cartoes.find((c) => c.id === l.cartaoId);
     const meta = [];
     meta.push(new Date(l.dataCompra + "T12:00:00").toLocaleDateString("pt-BR"));
+    meta.push(l.categoria || "Outros");
     meta.push(`de ${l.owner}`);
     if (l.criadoPorEmail) meta.push(`lançado por ${l.criadoPorEmail.split("@")[0]}`);
     if (l.pagamento === "credito") {
@@ -386,10 +465,22 @@ function renderizarLancamentos() {
 document.getElementById("mes-anterior").addEventListener("click", () => {
   mesSelecionado = deslocarMes(mesSelecionado, -1);
   renderizarResumo();
+  renderizarLancamentos();
 });
 document.getElementById("mes-proximo").addEventListener("click", () => {
   mesSelecionado = deslocarMes(mesSelecionado, 1);
   renderizarResumo();
+  renderizarLancamentos();
+});
+document.getElementById("mes-anterior-lanc").addEventListener("click", () => {
+  mesSelecionado = deslocarMes(mesSelecionado, -1);
+  renderizarResumo();
+  renderizarLancamentos();
+});
+document.getElementById("mes-proximo-lanc").addEventListener("click", () => {
+  mesSelecionado = deslocarMes(mesSelecionado, 1);
+  renderizarResumo();
+  renderizarLancamentos();
 });
 
 function deslocarMes(competencia, n) {
