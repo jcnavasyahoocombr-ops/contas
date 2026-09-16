@@ -88,8 +88,8 @@
       </div>
 
       <div class="bloco-secao">
-        <h3>Quem deve o quê</h3>
-        <p class="bloco-sub">Somando todos os lançamentos, de todos os meses.</p>
+        <h3>Quem de fora deve o quê</h3>
+        <p class="bloco-sub">Compras de outras pessoas no cartão de vocês, somadas desde o início (some daqui quando a pessoa pagar de volta).</p>
         <div id="lista-devedores" class="lista-devedores">
           <p class="vazio">Nenhum lançamento ainda.</p>
         </div>
@@ -237,7 +237,10 @@
           <input type="text" id="cartao-limite" inputmode="numeric" placeholder="R$ 0,00" />
         </label>
         <p id="cartao-erro" class="login-erro" hidden></p>
-        <button type="submit" class="btn btn-primario">Adicionar cartão</button>
+        <div class="login-botoes">
+          <button type="submit" class="btn btn-primario" id="btn-salvar-cartao">Adicionar cartão</button>
+          <button type="button" class="btn btn-fantasma" id="btn-cancelar-edicao-cartao" hidden>Cancelar</button>
+        </div>
       </form>
 
       <div class="bloco-secao">
