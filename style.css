@@ -40,6 +40,20 @@ h1, h2, h3 {
   margin: 0;
 }
 
+/* ---------- CARREGANDO ---------- */
+
+.tela-carregando {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tela-carregando p {
+  color: var(--papel-fraco);
+  font-family: var(--serif);
+  font-size: 18px;
+}
+
 /* ---------- LOGIN ---------- */
 
 .tela-login {
