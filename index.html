@@ -96,6 +96,24 @@
           <p class="vazio">Nenhum cartão cadastrado ainda.</p>
         </div>
       </div>
+
+      <div class="bloco-secao">
+        <h3>Detalhamento do mês</h3>
+        <div id="resumo-categorias" class="resumo-categorias"></div>
+
+        <div class="filtro-linha">
+          <label>
+            Filtrar por categoria
+            <select id="filtro-categoria">
+              <option value="todas">Todas</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="lista-lancamentos" class="lista-lancamentos">
+          <p class="vazio">Nenhum lançamento ainda.</p>
+        </div>
+      </div>
     </section>
 
     <!-- VIEW: LANÇAMENTOS -->
@@ -156,32 +174,6 @@
         <p id="lanc-erro" class="login-erro" hidden></p>
         <button type="submit" class="btn btn-primario">Salvar lançamento</button>
       </form>
-
-      <div class="bloco-secao">
-        <div class="lancamentos-lista-header">
-          <h3>Lançamentos do mês</h3>
-          <div class="seletor-mes seletor-mes--compacto">
-            <button id="mes-anterior-lanc" class="seta-mes" aria-label="Mês anterior">‹</button>
-            <span id="mes-atual-label-lanc">—</span>
-            <button id="mes-proximo-lanc" class="seta-mes" aria-label="Próximo mês">›</button>
-          </div>
-        </div>
-
-        <div id="resumo-categorias" class="resumo-categorias"></div>
-
-        <div class="filtro-linha">
-          <label>
-            Filtrar por categoria
-            <select id="filtro-categoria">
-              <option value="todas">Todas</option>
-            </select>
-          </label>
-        </div>
-
-        <div id="lista-lancamentos" class="lista-lancamentos">
-          <p class="vazio">Nenhum lançamento ainda.</p>
-        </div>
-      </div>
     </section>
 
     <!-- VIEW: CARTÕES -->
