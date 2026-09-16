@@ -181,7 +181,31 @@ navItens.forEach((btn) => {
 const formCartao = document.getElementById("form-cartao");
 const cartaoErro = document.getElementById("cartao-erro");
 const inputCartaoLimite = document.getElementById("cartao-limite");
+const btnSalvarCartao = document.getElementById("btn-salvar-cartao");
+const btnCancelarEdicaoCartao = document.getElementById("btn-cancelar-edicao-cartao");
 aplicarMascaraDinheiro(inputCartaoLimite);
+
+let cartaoEditandoId = null;
+
+function entrarModoEdicaoCartao(c) {
+  cartaoEditandoId = c.id;
+  document.getElementById("cartao-nome").value = c.nome;
+  document.getElementById("cartao-virada").value = c.virada;
+  document.getElementById("cartao-vencimento").value = c.vencimento;
+  inputCartaoLimite.value = c.limite > 0 ? formatarMascaraDinheiro(String(Math.round(c.limite * 100))) : "";
+  btnSalvarCartao.textContent = "Salvar alterações";
+  btnCancelarEdicaoCartao.hidden = false;
+  document.getElementById("cartao-nome").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function sairModoEdicaoCartao() {
+  cartaoEditandoId = null;
+  formCartao.reset();
+  btnSalvarCartao.textContent = "Adicionar cartão";
+  btnCancelarEdicaoCartao.hidden = true;
+}
+
+btnCancelarEdicaoCartao.addEventListener("click", sairModoEdicaoCartao);
 
 formCartao.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -199,14 +223,23 @@ formCartao.addEventListener("submit", async (e) => {
     return;
   }
 
-  await addDoc(collection(db, "households", householdId, "cards"), {
-    nome,
-    virada,
-    vencimento,
-    limite,
-    criadoPorEmail: auth.currentUser.email,
-  });
-  formCartao.reset();
+  if (cartaoEditandoId) {
+    await setDoc(
+      doc(db, "households", householdId, "cards", cartaoEditandoId),
+      { nome, virada, vencimento, limite },
+      { merge: true }
+    );
+    sairModoEdicaoCartao();
+  } else {
+    await addDoc(collection(db, "households", householdId, "cards"), {
+      nome,
+      virada,
+      vencimento,
+      limite,
+      criadoPorEmail: auth.currentUser.email,
+    });
+    formCartao.reset();
+  }
 });
 
 function renderizarCartoes() {
@@ -224,9 +257,13 @@ function renderizarCartoes() {
         <div class="linha-cartao-nome">${escapeHtml(c.nome)}</div>
         <div class="linha-cartao-datas">Vira dia ${c.virada} · vence dia ${c.vencimento}${c.limite ? ` · limite ${formatarMoeda(c.limite)}` : ""}</div>
       </div>
-      <button class="btn-excluir" data-id="${c.id}">excluir</button>
+      <div class="linha-cartao-acoes">
+        <button class="btn-excluir btn-editar" data-id="${c.id}">editar</button>
+        <button class="btn-excluir" data-id="${c.id}">excluir</button>
+      </div>
     `;
-    linha.querySelector(".btn-excluir").addEventListener("click", async () => {
+    linha.querySelector(".btn-editar").addEventListener("click", () => entrarModoEdicaoCartao(c));
+    linha.querySelectorAll(".btn-excluir:not(.btn-editar)")[0].addEventListener("click", async () => {
       const temLancamentos = lancamentos.some((l) => l.cartaoId === c.id);
       if (temLancamentos) {
         alert("Esse cartão tem lançamentos vinculados. Exclua os lançamentos primeiro.");
@@ -619,16 +656,21 @@ function renderizarResumo() {
     });
   }
 
-  // Quem deve o quê — acumulado geral (todos os meses)
+  // Quem deve o quê — só "outras pessoas" (terceiros/convidados), acumulado
+  // desde sempre, porque essa dívida não tem "mês" — some quando a pessoa
+  // paga de volta. Rosi/Julio (o casal) ficam de fora daqui: o saldo deles
+  // mês a mês já é tratado na tela Planilha, contra o salário.
   const porOwner = {};
-  lancamentos.forEach((l) => {
-    porOwner[l.owner] = (porOwner[l.owner] || 0) + l.valor;
-  });
+  lancamentos
+    .filter((l) => !pessoas.includes(l.owner))
+    .forEach((l) => {
+      porOwner[l.owner] = (porOwner[l.owner] || 0) + l.valor;
+    });
 
   const listaDevedores = document.getElementById("lista-devedores");
   const chaves = Object.keys(porOwner);
   if (chaves.length === 0) {
-    listaDevedores.innerHTML = '<p class="vazio">Nenhum lançamento ainda.</p>';
+    listaDevedores.innerHTML = '<p class="vazio">Nenhuma compra de outra pessoa registrada.</p>';
   } else {
     listaDevedores.innerHTML = "";
     chaves
