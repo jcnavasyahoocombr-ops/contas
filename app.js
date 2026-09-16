@@ -45,6 +45,19 @@ function formatarMoeda(v) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+/**
+ * Quanto do limite de um cartão está "comprometido" num determinado mês:
+ * soma de todas as parcelas (de qualquer compra, feita em qualquer mês)
+ * cuja competência ainda não chegou/passou até esse mês — ou seja, ainda
+ * não foram pagas. Assim que o mês da parcela passa (a fatura é paga),
+ * ela para de contar e o limite "volta".
+ */
+function limiteUsadoNoMes(cartaoId, mes) {
+  return lancamentos
+    .filter((l) => l.pagamento === "credito" && l.cartaoId === cartaoId && l.competencia >= mes)
+    .reduce((s, l) => s + l.valor, 0);
+}
+
 // ---------- AUTENTICAÇÃO ----------
 const telaCarregando = document.getElementById("tela-carregando");
 const telaLogin = document.getElementById("tela-login");
@@ -167,6 +180,8 @@ navItens.forEach((btn) => {
 // ---------- CARTÕES ----------
 const formCartao = document.getElementById("form-cartao");
 const cartaoErro = document.getElementById("cartao-erro");
+const inputCartaoLimite = document.getElementById("cartao-limite");
+aplicarMascaraDinheiro(inputCartaoLimite);
 
 formCartao.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -174,6 +189,8 @@ formCartao.addEventListener("submit", async (e) => {
   const nome = document.getElementById("cartao-nome").value.trim();
   const virada = parseInt(document.getElementById("cartao-virada").value, 10);
   const vencimento = parseInt(document.getElementById("cartao-vencimento").value, 10);
+  const limiteValor = lerValorMascarado(inputCartaoLimite);
+  const limite = isNaN(limiteValor) ? 0 : limiteValor;
 
   if (!nome || !virada || !vencimento) return;
   if (virada < 1 || virada > 31 || vencimento < 1 || vencimento > 31) {
@@ -186,6 +203,7 @@ formCartao.addEventListener("submit", async (e) => {
     nome,
     virada,
     vencimento,
+    limite,
     criadoPorEmail: auth.currentUser.email,
   });
   formCartao.reset();
@@ -204,7 +222,7 @@ function renderizarCartoes() {
     linha.innerHTML = `
       <div>
         <div class="linha-cartao-nome">${escapeHtml(c.nome)}</div>
-        <div class="linha-cartao-datas">Vira dia ${c.virada} · vence dia ${c.vencimento}</div>
+        <div class="linha-cartao-datas">Vira dia ${c.virada} · vence dia ${c.vencimento}${c.limite ? ` · limite ${formatarMoeda(c.limite)}` : ""}</div>
       </div>
       <button class="btn-excluir" data-id="${c.id}">excluir</button>
     `;
@@ -572,11 +590,30 @@ function renderizarResumo() {
       const totalCartao = creditoMes
         .filter((l) => l.cartaoId === c.id)
         .reduce((s, l) => s + l.valor, 0);
+
       const linha = document.createElement("div");
       linha.className = "linha-fatura";
+
+      let limiteHtml = "";
+      if (c.limite > 0) {
+        const usado = limiteUsadoNoMes(c.id, mesSelecionado);
+        const disponivel = c.limite - usado;
+        const pct = Math.max(0, Math.min(100, (usado / c.limite) * 100));
+        limiteHtml = `
+          <div class="linha-fatura-limite">
+            <span>Limite usado: ${formatarMoeda(usado)} de ${formatarMoeda(c.limite)}</span>
+            <span class="${disponivel >= 0 ? "saldo-positivo" : "saldo-negativo"}">${formatarMoeda(disponivel)} disponível</span>
+          </div>
+          <div class="barra-limite"><div class="barra-limite-preenchida" style="width:${pct}%"></div></div>
+        `;
+      }
+
       linha.innerHTML = `
-        <span class="linha-fatura-nome">${escapeHtml(c.nome)}</span>
-        <span class="linha-fatura-valor">${formatarMoeda(totalCartao)}</span>
+        <div class="linha-fatura-topo">
+          <span class="linha-fatura-nome">${escapeHtml(c.nome)}</span>
+          <span class="linha-fatura-valor">${formatarMoeda(totalCartao)}</span>
+        </div>
+        ${limiteHtml}
       `;
       listaFaturas.appendChild(linha);
     });
@@ -677,6 +714,40 @@ function renderizarPlanilha() {
       );
     });
 
+    container.appendChild(coluna);
+  });
+
+  // Pessoas "extras": quem apareceu em "Outra pessoa" nos lançamentos deste
+  // mês, mas não está na lista fixa de pessoas do casal. Ganham uma coluna
+  // simples (só os gastos, sem salário/saldo) — e só aparecem se tiverem
+  // algum lançamento no mês.
+  const nomesExtras = [...new Set(doMes.map((l) => l.owner).filter((o) => !pessoas.includes(o)))];
+
+  nomesExtras.forEach((nome) => {
+    const gastosPessoa = doMes.filter((l) => l.owner === nome);
+    const totalGasto = gastosPessoa.reduce((s, l) => s + l.valor, 0);
+
+    const linhasHtml = gastosPessoa
+      .map(
+        (l) => `
+          <div class="coluna-pessoa-linha">
+            <span class="coluna-pessoa-linha-desc">${escapeHtml(l.descricao)}</span>
+            <span class="coluna-pessoa-linha-valor">${formatarMoeda(l.valor)}</span>
+          </div>`
+      )
+      .join("");
+
+    const coluna = document.createElement("div");
+    coluna.className = "coluna-pessoa coluna-pessoa--extra";
+    coluna.innerHTML = `
+      <h3 class="coluna-pessoa-nome">${escapeHtml(nome)}</h3>
+      <p class="coluna-pessoa-extra-tag">Outra pessoa</p>
+      <div class="coluna-pessoa-lista">${linhasHtml}</div>
+      <div class="coluna-pessoa-subtotal">
+        <span>Total gasto</span>
+        <span>${formatarMoeda(totalGasto)}</span>
+      </div>
+    `;
     container.appendChild(coluna);
   });
 
