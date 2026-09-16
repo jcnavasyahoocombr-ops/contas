@@ -581,6 +581,11 @@ input:focus, select:focus, button:focus-visible {
 .linha-cartao {
   align-items: flex-start;
 }
+.linha-cartao-acoes {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
 .linha-cartao-nome { font-size: 16px; font-family: var(--serif); }
 .linha-cartao-datas { font-size: 13px; color: var(--papel-fraco); margin-top: 4px; }
 
