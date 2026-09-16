@@ -46,6 +46,7 @@ function formatarMoeda(v) {
 }
 
 // ---------- AUTENTICAÇÃO ----------
+const telaCarregando = document.getElementById("tela-carregando");
 const telaLogin = document.getElementById("tela-login");
 const telaApp = document.getElementById("app");
 const formLogin = document.getElementById("form-login");
@@ -99,6 +100,7 @@ let unsubLancamentos = null;
 let unsubSalarios = null;
 
 onAuthStateChanged(auth, (user) => {
+  telaCarregando.hidden = true;
   if (user) {
     uid = user.uid;
     telaLogin.hidden = true;
