@@ -35,6 +35,7 @@ let uid = null;
 let cartoes = [];      // [{id, nome, virada, vencimento}]
 let lancamentos = [];  // [{id, descricao, valor, dataCompra, owner, pagamento, cartaoId, competencia, parcelaAtual, parcelasTotal, groupId}]
 let salariosPorMes = {}; // { "2026-09": { "Eu": 5000, "Parceiro(a)": 4500 }, ... }
+let categoriasDb = []; // [{id, nome}] — cadastradas pelo usuário; se vazio, usa a lista padrão do config
 let mesSelecionado = formatoAnoMes(new Date());
 let categoriaFiltro = "todas";
 
@@ -111,6 +112,7 @@ document.getElementById("btn-sair").addEventListener("click", () => signOut(auth
 let unsubCartoes = null;
 let unsubLancamentos = null;
 let unsubSalarios = null;
+let unsubCategorias = null;
 
 onAuthStateChanged(auth, (user) => {
   telaCarregando.hidden = true;
@@ -126,9 +128,11 @@ onAuthStateChanged(auth, (user) => {
     if (unsubCartoes) unsubCartoes();
     if (unsubLancamentos) unsubLancamentos();
     if (unsubSalarios) unsubSalarios();
+    if (unsubCategorias) unsubCategorias();
     cartoes = [];
     lancamentos = [];
     salariosPorMes = {};
+    categoriasDb = [];
   }
 });
 
@@ -157,6 +161,14 @@ function iniciarListeners() {
       salariosPorMes[d.id] = d.data().valores || {};
     });
     renderizarPlanilha();
+  });
+
+  const refCategorias = query(collection(db, "households", householdId, "categorias"), orderBy("nome"));
+  unsubCategorias = onSnapshot(refCategorias, (snap) => {
+    categoriasDb = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderizarPillsCategoria();
+    renderizarListaCategorias();
+    renderizarLancamentos();
   });
 }
 
@@ -278,9 +290,15 @@ function renderizarCartoes() {
 }
 
 function preencherSelectCartoes() {
-  const select = document.getElementById("lanc-cartao");
-  select.innerHTML = cartoes
-    .map((c) => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`)
+  const grupo = document.getElementById("grupo-cartao");
+  const selecionadoAntes = grupo.querySelector("input:checked")?.value;
+  grupo.innerHTML = cartoes
+    .map(
+      (c, i) =>
+        `<label class="radio-pill"><input type="radio" name="cartao" value="${c.id}" ${
+          c.id === selecionadoAntes ? "checked" : i === 0 && !selecionadoAntes ? "checked" : ""
+        } /> ${escapeHtml(c.nome)}</label>`
+    )
     .join("");
 }
 
@@ -316,20 +334,72 @@ grupoOwner.addEventListener("change", () => {
 const grupoCategoria = document.getElementById("grupo-categoria");
 const inputCategoriaNome = document.getElementById("lanc-categoria-nome");
 
-grupoCategoria.innerHTML =
-  categorias
-    .map(
-      (nome, i) =>
-        `<label class="radio-pill"><input type="radio" name="categoria" value="${escapeHtml(nome)}" ${i === 0 ? "checked" : ""} /> ${escapeHtml(nome)}</label>`
-    )
-    .join("") +
-  `<label class="radio-pill"><input type="radio" name="categoria" value="outra" /> Outra</label>`;
+/** Lista de nomes de categoria em uso: do banco, ou a padrão do config se ainda não tiver nenhuma cadastrada. */
+function nomesCategorias() {
+  return categoriasDb.length > 0 ? categoriasDb.map((c) => c.nome) : categorias;
+}
+
+function renderizarPillsCategoria() {
+  const selecionadaAntes = grupoCategoria.querySelector("input:checked")?.value;
+  grupoCategoria.innerHTML =
+    nomesCategorias()
+      .map(
+        (nome, i) =>
+          `<label class="radio-pill"><input type="radio" name="categoria" value="${escapeHtml(nome)}" ${
+            nome === selecionadaAntes ? "checked" : i === 0 && !selecionadaAntes ? "checked" : ""
+          } /> ${escapeHtml(nome)}</label>`
+      )
+      .join("") + `<label class="radio-pill"><input type="radio" name="categoria" value="outra" /> Outra</label>`;
+}
+renderizarPillsCategoria();
 
 grupoCategoria.addEventListener("change", () => {
   const tipo = grupoCategoria.querySelector("input:checked").value;
   inputCategoriaNome.hidden = tipo !== "outra";
   inputCategoriaNome.required = tipo === "outra";
 });
+
+// ---------- CATEGORIAS (cadastradas pelo usuário, sem precisar mexer no código) ----------
+const formCategoria = document.getElementById("form-categoria");
+formCategoria.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("categoria-nome-novo");
+  const nome = input.value.trim();
+  if (!nome) return;
+  if (nomesCategorias().some((n) => n.toLowerCase() === nome.toLowerCase())) {
+    input.value = "";
+    return;
+  }
+  await addDoc(collection(db, "households", householdId, "categorias"), { nome });
+  input.value = "";
+});
+
+function renderizarListaCategorias() {
+  const lista = document.getElementById("lista-categorias");
+  const nomes = nomesCategorias();
+  if (nomes.length === 0) {
+    lista.innerHTML = '<p class="vazio">Nenhuma categoria cadastrada ainda.</p>';
+    return;
+  }
+  lista.innerHTML = nomes
+    .map((nome) => {
+      const registro = categoriasDb.find((c) => c.nome === nome);
+      const botaoExcluir = registro
+        ? `<button class="tag-categoria-excluir" data-id="${registro.id}" title="Excluir categoria">✕</button>`
+        : "";
+      return `
+        <div class="tag-categoria">
+          <span class="tag-categoria-nome">${escapeHtml(nome)}</span>
+          ${botaoExcluir}
+        </div>`;
+    })
+    .join("");
+  lista.querySelectorAll(".tag-categoria-excluir").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await deleteDoc(doc(db, "households", householdId, "categorias", btn.dataset.id));
+    });
+  });
+}
 
 // Filtro de categoria na lista de lançamentos do mês
 const filtroCategoria = document.getElementById("filtro-categoria");
@@ -338,10 +408,11 @@ filtroCategoria.addEventListener("change", () => {
   renderizarLancamentos();
 });
 
-["lanc-data", "lanc-cartao", "lanc-parcelas"].forEach((id) => {
+["lanc-data", "lanc-parcelas"].forEach((id) => {
   document.getElementById(id).addEventListener("input", atualizarPreviewParcelas);
   document.getElementById(id).addEventListener("change", atualizarPreviewParcelas);
 });
+document.getElementById("grupo-cartao").addEventListener("change", atualizarPreviewParcelas);
 
 function atualizarPreviewParcelas() {
   const preview = document.getElementById("preview-parcelas");
@@ -351,7 +422,7 @@ function atualizarPreviewParcelas() {
     return;
   }
   const data = document.getElementById("lanc-data").value;
-  const cartaoId = document.getElementById("lanc-cartao").value;
+  const cartaoId = document.getElementById("grupo-cartao").querySelector("input:checked")?.value;
   const cartao = cartoes.find((c) => c.id === cartaoId);
   const parcelas = parseInt(document.getElementById("lanc-parcelas").value, 10) || 1;
   if (!data || !cartao) {
@@ -403,6 +474,90 @@ aplicarMascaraDinheiro(inputValor);
 
 const formLancamento = document.getElementById("form-lancamento");
 const lancErro = document.getElementById("lanc-erro");
+const btnSalvarLancamento = document.getElementById("btn-salvar-lancamento");
+const btnCancelarEdicaoLancamento = document.getElementById("btn-cancelar-edicao-lancamento");
+let lancamentoEditandoId = null;
+
+/**
+ * Marca a pill certa num grupo (owner/categoria) a partir de um valor
+ * salvo. Se o valor não bater com nenhuma pill fixa, cai em "outro(a)"
+ * e mostra o campo de texto livre preenchido.
+ */
+function selecionarPill(grupoEl, valor, inputTextoEl) {
+  const radios = grupoEl.querySelectorAll('input[type="radio"]');
+  let achou = false;
+  radios.forEach((r) => {
+    r.checked = r.value === valor;
+    if (r.value === valor) achou = true;
+  });
+  if (!achou) {
+    const outro = [...radios].find((r) => r.value === "outro" || r.value === "outra");
+    if (outro) outro.checked = true;
+    if (inputTextoEl) {
+      inputTextoEl.hidden = false;
+      inputTextoEl.value = valor;
+    }
+  } else if (inputTextoEl) {
+    inputTextoEl.hidden = true;
+  }
+}
+
+function entrarModoEdicaoLancamento(l) {
+  lancamentoEditandoId = l.id;
+
+  document.getElementById("lanc-descricao").value = l.descricao;
+  inputValor.value = formatarMascaraDinheiro(String(Math.round(l.valor * 100)));
+  document.getElementById("lanc-data").value = l.dataCompra;
+  selecionarPill(grupoOwner, l.owner, inputOwnerNome);
+  selecionarPill(grupoCategoria, l.categoria || "Outros", inputCategoriaNome);
+
+  grupoPagamento.querySelectorAll('input[type="radio"]').forEach((r) => {
+    r.checked = r.value === l.pagamento;
+  });
+  camposCredito.hidden = l.pagamento !== "credito";
+
+  const avisoParcela = document.getElementById("aviso-parcela-edicao");
+  const linhaParcelas = document.getElementById("campo-parcelas-linha");
+  if (l.pagamento === "credito") {
+    document.getElementById("grupo-cartao").querySelectorAll('input[type="radio"]').forEach((r) => {
+      r.checked = r.value === l.cartaoId;
+    });
+    document.getElementById("lanc-parcelas").value = l.parcelasTotal || 1;
+    linhaParcelas.hidden = true;
+    if (l.parcelasTotal > 1) {
+      avisoParcela.hidden = false;
+      avisoParcela.textContent = `Parcela ${l.parcelaAtual} de ${l.parcelasTotal} — o parcelamento não muda por aqui; para isso, exclua e lance de novo.`;
+    } else {
+      avisoParcela.hidden = true;
+    }
+  }
+
+  document.getElementById("titulo-form-lancamento").textContent = "Editar lançamento";
+  btnSalvarLancamento.textContent = "Salvar alterações";
+  btnCancelarEdicaoLancamento.hidden = false;
+
+  document.querySelector('.nav-item[data-view="lancamentos"]').click();
+  document.getElementById("lanc-descricao").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function sairModoEdicaoLancamento() {
+  lancamentoEditandoId = null;
+  formLancamento.reset();
+  camposCredito.hidden = false;
+  inputOwnerNome.hidden = true;
+  inputCategoriaNome.hidden = true;
+  document.getElementById("preview-parcelas").textContent = "";
+  document.getElementById("aviso-parcela-edicao").hidden = true;
+  document.getElementById("campo-parcelas-linha").hidden = false;
+  document.getElementById("titulo-form-lancamento").textContent = "Novo lançamento";
+  btnSalvarLancamento.textContent = "Salvar lançamento";
+  btnCancelarEdicaoLancamento.hidden = true;
+}
+
+btnCancelarEdicaoLancamento.addEventListener("click", () => {
+  sairModoEdicaoLancamento();
+  document.querySelector('.nav-item[data-view="resumo"]').click();
+});
 
 formLancamento.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -434,6 +589,40 @@ formLancamento.addEventListener("submit", async (e) => {
     return;
   }
 
+  // ---------- MODO EDIÇÃO: atualiza o lançamento existente em vez de criar um novo ----------
+  if (lancamentoEditandoId) {
+    const original = lancamentos.find((l) => l.id === lancamentoEditandoId);
+    const dadosAtualizados = { descricao, valor: valorTotal, dataCompra, owner, categoria };
+
+    if (pagamento === "debito") {
+      dadosAtualizados.pagamento = "debito";
+      dadosAtualizados.cartaoId = null;
+      dadosAtualizados.competencia = dataCompra.slice(0, 7);
+    } else {
+      const cartaoId = document.getElementById("grupo-cartao").querySelector("input:checked")?.value;
+      const cartao = cartoes.find((c) => c.id === cartaoId);
+      if (!cartao) {
+        lancErro.textContent = "Selecione um cartão.";
+        lancErro.hidden = false;
+        return;
+      }
+      const parcelaAtual = original?.parcelaAtual || 1;
+      const parcelasTotal = original?.parcelasTotal || 1;
+      const primeiraCompetencia = competenciaDaCompra(dataCompra, cartao.virada, cartao.vencimento);
+      const listaCompetencias = gerarCompetenciasParceladas(primeiraCompetencia, parcelasTotal);
+      dadosAtualizados.pagamento = "credito";
+      dadosAtualizados.cartaoId = cartaoId;
+      dadosAtualizados.competencia = listaCompetencias[parcelaAtual - 1];
+    }
+
+    await setDoc(doc(db, "households", householdId, "expenses", lancamentoEditandoId), dadosAtualizados, {
+      merge: true,
+    });
+    sairModoEdicaoLancamento();
+    document.querySelector('.nav-item[data-view="resumo"]').click();
+    return;
+  }
+
   if (pagamento === "debito") {
     await addDoc(collection(db, "households", householdId, "expenses"), {
       descricao,
@@ -450,7 +639,7 @@ formLancamento.addEventListener("submit", async (e) => {
       criadoPorEmail: auth.currentUser.email,
     });
   } else {
-    const cartaoId = document.getElementById("lanc-cartao").value;
+    const cartaoId = document.getElementById("grupo-cartao").querySelector("input:checked")?.value;
     const cartao = cartoes.find((c) => c.id === cartaoId);
     if (!cartao) {
       lancErro.textContent = "Cadastre um cartão antes de lançar uma compra no crédito.";
@@ -546,6 +735,7 @@ function renderizarLancamentos() {
     const linha = document.createElement("div");
     linha.className = "linha-lancamento";
     linha.innerHTML = `
+      ${modoSelecao ? `<input type="checkbox" class="linha-lancamento-checkbox" data-id="${l.id}" ${selecionados.has(l.id) ? "checked" : ""} />` : ""}
       <div class="linha-lancamento-info">
         <span class="linha-lancamento-desc">${escapeHtml(l.descricao)}</span>
         <span class="linha-lancamento-meta">
@@ -554,9 +744,20 @@ function renderizarLancamentos() {
         </span>
       </div>
       <span class="linha-lancamento-valor">${formatarMoeda(l.valor)}</span>
-      <button class="btn-excluir" data-id="${l.id}">excluir</button>
+      <div class="linha-lancamento-acoes">
+        <button class="btn-excluir btn-editar" data-id="${l.id}">editar</button>
+        <button class="btn-excluir" data-id="${l.id}">excluir</button>
+      </div>
     `;
-    linha.querySelector(".btn-excluir").addEventListener("click", async () => {
+    if (modoSelecao) {
+      linha.querySelector(".linha-lancamento-checkbox").addEventListener("change", (e) => {
+        if (e.target.checked) selecionados.add(l.id);
+        else selecionados.delete(l.id);
+        atualizarBotaoExcluirSelecionados();
+      });
+    }
+    linha.querySelector(".btn-editar").addEventListener("click", () => entrarModoEdicaoLancamento(l));
+    linha.querySelectorAll(".btn-excluir:not(.btn-editar)")[0].addEventListener("click", async () => {
       if (confirm("Excluir este lançamento?")) {
         await deleteDoc(doc(db, "households", householdId, "expenses", l.id));
       }
@@ -564,6 +765,41 @@ function renderizarLancamentos() {
     lista.appendChild(linha);
   });
 }
+
+// ---------- SELEÇÃO MÚLTIPLA (excluir vários lançamentos de uma vez) ----------
+let modoSelecao = false;
+let selecionados = new Set();
+
+const btnModoSelecao = document.getElementById("btn-modo-selecao");
+const btnExcluirSelecionados = document.getElementById("btn-excluir-selecionados");
+
+btnModoSelecao.addEventListener("click", () => {
+  modoSelecao = !modoSelecao;
+  selecionados.clear();
+  btnModoSelecao.textContent = modoSelecao ? "Cancelar seleção" : "Selecionar vários";
+  btnExcluirSelecionados.hidden = !modoSelecao;
+  atualizarBotaoExcluirSelecionados();
+  renderizarLancamentos();
+});
+
+function atualizarBotaoExcluirSelecionados() {
+  document.getElementById("qtd-selecionados").textContent = selecionados.size;
+  btnExcluirSelecionados.disabled = selecionados.size === 0;
+}
+
+btnExcluirSelecionados.addEventListener("click", async () => {
+  if (selecionados.size === 0) return;
+  if (!confirm(`Excluir ${selecionados.size} lançamento(s) selecionado(s)?`)) return;
+  const batch = writeBatch(db);
+  selecionados.forEach((id) => {
+    batch.delete(doc(db, "households", householdId, "expenses", id));
+  });
+  await batch.commit();
+  selecionados.clear();
+  modoSelecao = false;
+  btnModoSelecao.textContent = "Selecionar vários";
+  btnExcluirSelecionados.hidden = true;
+});
 
 // ---------- RESUMO ----------
 document.getElementById("mes-anterior").addEventListener("click", () => irParaMes(-1));
