@@ -469,6 +469,13 @@ input:focus, select:focus, button:focus-visible {
   font-family: var(--mono);
 }
 
+.linha-devedor {
+  flex-wrap: wrap;
+}
+.linha-devedor .btn-link {
+  margin-left: auto;
+}
+
 .seta-mes {
   background: var(--tinta-suave);
   border: 1px solid var(--tinta-linha);
@@ -577,6 +584,23 @@ input:focus, select:focus, button:focus-visible {
 .barra-limite-preenchida {
   height: 100%;
   background: var(--dourado);
+}
+
+.btn-toggle-pago {
+  align-self: flex-start;
+  margin-top: 10px;
+  background: none;
+  border: 1px solid var(--tinta-linha);
+  color: var(--papel-fraco);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-toggle-pago:hover { border-color: var(--dourado); color: var(--papel); }
+.btn-toggle-pago--ativo {
+  border-color: var(--sálvia);
+  color: var(--sálvia);
 }
 
 .linha-devedor-nome, .linha-fatura-nome {
