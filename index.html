@@ -107,7 +107,13 @@
       </div>
 
       <div class="bloco-secao">
-        <h3>Detalhamento do mês</h3>
+        <div class="lancamentos-lista-header">
+          <h3>Detalhamento do mês</h3>
+          <div class="acoes-selecao">
+            <button id="btn-modo-selecao" class="btn-link">Selecionar vários</button>
+            <button id="btn-excluir-selecionados" class="btn-link btn-link-perigo" hidden>Excluir selecionados (<span id="qtd-selecionados">0</span>)</button>
+          </div>
+        </div>
         <div id="resumo-categorias" class="resumo-categorias"></div>
 
         <div class="filtro-linha">
@@ -154,7 +160,7 @@
     <!-- VIEW: LANÇAMENTOS -->
     <section id="view-lancamentos" class="view" hidden>
       <header class="view-header">
-        <h2>Novo lançamento</h2>
+        <h2 id="titulo-form-lancamento">Novo lançamento</h2>
       </header>
 
       <form id="form-lancamento" class="form-lancamento">
@@ -189,25 +195,29 @@
         <label>
           Forma de pagamento
           <div class="grupo-radio" id="grupo-pagamento">
-            <label class="radio-pill"><input type="radio" name="pagamento" value="debito" checked /> Débito</label>
-            <label class="radio-pill"><input type="radio" name="pagamento" value="credito" /> Crédito</label>
+            <label class="radio-pill"><input type="radio" name="pagamento" value="credito" checked /> Crédito</label>
+            <label class="radio-pill"><input type="radio" name="pagamento" value="debito" /> Débito</label>
           </div>
         </label>
 
-        <div id="campos-credito" class="campos-credito" hidden>
+        <div id="campos-credito" class="campos-credito">
           <label>
             Cartão
-            <select id="lanc-cartao"></select>
+            <div class="grupo-radio" id="grupo-cartao"><!-- preenchido via JS --></div>
           </label>
-          <label>
+          <label id="campo-parcelas-linha">
             Parcelas
             <input type="number" id="lanc-parcelas" min="1" max="48" value="1" />
           </label>
+          <p id="aviso-parcela-edicao" class="preview-parcelas" hidden></p>
           <p id="preview-parcelas" class="preview-parcelas"></p>
         </div>
 
         <p id="lanc-erro" class="login-erro" hidden></p>
-        <button type="submit" class="btn btn-primario">Salvar lançamento</button>
+        <div class="login-botoes">
+          <button type="submit" class="btn btn-primario" id="btn-salvar-lancamento">Salvar lançamento</button>
+          <button type="button" class="btn btn-fantasma" id="btn-cancelar-edicao-lancamento" hidden>Cancelar</button>
+        </div>
       </form>
     </section>
 
@@ -247,6 +257,16 @@
         <div id="lista-cartoes" class="lista-cartoes">
           <p class="vazio">Nenhum cartão cadastrado ainda.</p>
         </div>
+      </div>
+
+      <div class="bloco-secao">
+        <h3>Categorias</h3>
+        <p class="bloco-sub">Aparecem como opção na hora de lançar um gasto.</p>
+        <form id="form-categoria" class="form-categoria-inline">
+          <input type="text" id="categoria-nome-novo" placeholder="Nova categoria" required />
+          <button type="submit" class="btn btn-primario">Adicionar</button>
+        </form>
+        <div id="lista-categorias" class="resumo-categorias"></div>
       </div>
     </section>
 
