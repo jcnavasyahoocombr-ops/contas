@@ -36,6 +36,8 @@ let cartoes = [];      // [{id, nome, virada, vencimento}]
 let lancamentos = [];  // [{id, descricao, valor, dataCompra, owner, pagamento, cartaoId, competencia, parcelaAtual, parcelasTotal, groupId}]
 let salariosPorMes = {}; // { "2026-09": { "Eu": 5000, "Parceiro(a)": 4500 }, ... }
 let categoriasDb = []; // [{id, nome}] — cadastradas pelo usuário; se vazio, usa a lista padrão do config
+let statusFaturas = {}; // { "cartaoId_2026-10": true (paga) | false (marcada como não paga) }
+let liquidacoes = []; // [{id, pessoa, valor, data}] — pagamentos recebidos de terceiros
 let mesSelecionado = formatoAnoMes(new Date());
 let categoriaFiltro = "todas";
 
@@ -55,7 +57,16 @@ function formatarMoeda(v) {
  */
 function limiteUsadoNoMes(cartaoId, mes) {
   return lancamentos
-    .filter((l) => l.pagamento === "credito" && l.cartaoId === cartaoId && l.competencia >= mes)
+    .filter((l) => l.pagamento === "credito" && l.cartaoId === cartaoId)
+    .filter((l) => {
+      const chave = `${cartaoId}_${l.competencia}`;
+      // Se essa fatura foi marcada manualmente (paga ou não), isso manda
+      // mais que a regra padrão de data — permite liberar o limite antes
+      // da hora (já paguei) ou manter comprometido mesmo passado o mês
+      // (esqueci de pagar).
+      if (chave in statusFaturas) return !statusFaturas[chave];
+      return l.competencia >= mes;
+    })
     .reduce((s, l) => s + l.valor, 0);
 }
 
@@ -113,6 +124,8 @@ let unsubCartoes = null;
 let unsubLancamentos = null;
 let unsubSalarios = null;
 let unsubCategorias = null;
+let unsubFaturas = null;
+let unsubLiquidacoes = null;
 
 onAuthStateChanged(auth, (user) => {
   telaCarregando.hidden = true;
@@ -129,10 +142,14 @@ onAuthStateChanged(auth, (user) => {
     if (unsubLancamentos) unsubLancamentos();
     if (unsubSalarios) unsubSalarios();
     if (unsubCategorias) unsubCategorias();
+    if (unsubFaturas) unsubFaturas();
+    if (unsubLiquidacoes) unsubLiquidacoes();
     cartoes = [];
     lancamentos = [];
     salariosPorMes = {};
     categoriasDb = [];
+    statusFaturas = {};
+    liquidacoes = [];
   }
 });
 
@@ -161,6 +178,21 @@ function iniciarListeners() {
       salariosPorMes[d.id] = d.data().valores || {};
     });
     renderizarPlanilha();
+  });
+
+  const refFaturas = collection(db, "households", householdId, "faturas_status");
+  unsubFaturas = onSnapshot(refFaturas, (snap) => {
+    statusFaturas = {};
+    snap.docs.forEach((d) => {
+      statusFaturas[d.id] = d.data().pago;
+    });
+    renderizarResumo();
+  });
+
+  const refLiquidacoes = collection(db, "households", householdId, "liquidacoes");
+  unsubLiquidacoes = onSnapshot(refLiquidacoes, (snap) => {
+    liquidacoes = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderizarResumo();
   });
 
   const refCategorias = query(collection(db, "households", householdId, "categorias"), orderBy("nome"));
@@ -864,6 +896,9 @@ function renderizarResumo() {
         .filter((l) => l.cartaoId === c.id)
         .reduce((s, l) => s + l.valor, 0);
 
+      const chaveFatura = `${c.id}_${mesSelecionado}`;
+      const faturaPaga = statusFaturas[chaveFatura] === true;
+
       const linha = document.createElement("div");
       linha.className = "linha-fatura";
 
@@ -887,7 +922,13 @@ function renderizarResumo() {
           <span class="linha-fatura-valor">${formatarMoeda(totalCartao)}</span>
         </div>
         ${limiteHtml}
+        <button class="btn-toggle-pago ${faturaPaga ? "btn-toggle-pago--ativo" : ""}" data-chave="${chaveFatura}">
+          ${faturaPaga ? "✓ Fatura paga" : "Marcar fatura como paga"}
+        </button>
       `;
+      linha.querySelector(".btn-toggle-pago").addEventListener("click", async () => {
+        await setDoc(doc(db, "households", householdId, "faturas_status", chaveFatura), { pago: !faturaPaga });
+      });
       listaFaturas.appendChild(linha);
     });
   }
@@ -902,9 +943,13 @@ function renderizarResumo() {
     .forEach((l) => {
       porOwner[l.owner] = (porOwner[l.owner] || 0) + l.valor;
     });
+  // Desconta o que já foi pago de volta
+  liquidacoes.forEach((p) => {
+    porOwner[p.pessoa] = (porOwner[p.pessoa] || 0) - p.valor;
+  });
 
   const listaDevedores = document.getElementById("lista-devedores");
-  const chaves = Object.keys(porOwner);
+  const chaves = Object.keys(porOwner).filter((chave) => porOwner[chave] > 0.01);
   if (chaves.length === 0) {
     listaDevedores.innerHTML = '<p class="vazio">Nenhuma compra de outra pessoa registrada.</p>';
   } else {
@@ -917,12 +962,23 @@ function renderizarResumo() {
         linha.innerHTML = `
           <span class="linha-devedor-nome">${escapeHtml(chave)}</span>
           <span class="linha-devedor-valor">${formatarMoeda(porOwner[chave])}</span>
+          <button class="btn-link" data-pessoa="${escapeHtml(chave)}" data-valor="${porOwner[chave]}">marcar como pago</button>
         `;
+        linha.querySelector("button").addEventListener("click", async () => {
+          if (confirm(`Confirmar que ${chave} pagou ${formatarMoeda(porOwner[chave])} de volta?`)) {
+            await addDoc(collection(db, "households", householdId, "liquidacoes"), {
+              pessoa: chave,
+              valor: porOwner[chave],
+              data: formatoAnoMes(new Date()) + "-" + String(new Date().getDate()).padStart(2, "0"),
+              criadoPorEmail: auth.currentUser.email,
+            });
+          }
+        });
         listaDevedores.appendChild(linha);
       });
   }
 
-  const totalGeral = Object.values(porOwner).reduce((s, v) => s + v, 0);
+  const totalGeral = Object.values(porOwner).reduce((s, v) => s + Math.max(0, v), 0);
   document.getElementById("total-geral-valor").textContent = formatarMoeda(totalGeral);
 }
 
